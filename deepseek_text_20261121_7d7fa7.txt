@@ -1,0 +1,12 @@
+# PHP ভার্সনের সিকিউরিটি ফাইল
+php-version/setup_admin.php
+php-version/config.local.php
+
+# OS ফাইল
+.DS_Store
+Thumbs.db
+*.log
+
+# Editor
+.vscode/
+.idea/

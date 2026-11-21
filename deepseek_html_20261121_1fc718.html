@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ISP Billing Management System</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI','Nirmala UI',sans-serif; background:#f0f2f5; color:#2c3e50; }
+
+  #loginScreen { position:fixed; inset:0; background:#1e2a38; display:flex;
+    align-items:center; justify-content:center; z-index:9999; }
+  .login-box { background:#fff; padding:36px 32px; border-radius:14px; width:340px;
+    box-shadow:0 10px 40px rgba(0,0,0,.3); }
+  .login-box h2 { margin:0 0 6px; color:#1e2a38; font-size:22px; }
+  .login-box p.sub { color:#7f8c8d; font-size:13px; margin:0 0 22px; }
+  .login-box label { display:block; font-size:13px; color:#5a6b7c; margin-bottom:6px; font-weight:600; }
+  .login-box input { width:100%; padding:11px 12px; border:1px solid #d5dde5; border-radius:8px;
+    font-size:14px; margin-bottom:16px; outline:none; }
+  .login-box input:focus { border-color:#4fc3f7; }
+  .login-box button { width:100%; padding:12px; background:#4fc3f7; color:#fff; border:none;
+    border-radius:8px; font-size:15px; font-weight:600; cursor:pointer; }
+  .login-box button:hover { background:#29b6f6; }
+  .login-err { background:#fdecea; color:#e74c3c; padding:10px; border-radius:8px;
+    font-size:13px; margin-bottom:14px; display:none; }
+
+  #app { display:flex; min-height:100vh; display:none; }
+  .sidebar { width:250px; background:#1e2a38; color:#cfd8e3; position:fixed;
+    top:0; left:0; height:100vh; overflow-y:auto; transition:transform .3s; z-index:100; }
+  .sidebar h2 { padding:20px 18px; font-size:14px; letter-spacing:1px; color:#fff;
+    background:#16202c; border-bottom:1px solid #2c3e50; }
+  .sidebar h2 span { color:#4fc3f7; }
+  .sidebar a { display:flex; align-items:center; gap:10px; padding:12px 18px;
+    color:#cfd8e3; text-decoration:none; font-size:14px; border-left:4px solid transparent; cursor:pointer; }
+  .sidebar a:hover { background:#263545; color:#fff; }
+  .sidebar a.active { background:#263545; color:#fff; border-left-color:#4fc3f7; }
+  .main { margin-left:250px; flex:1; }
+  .topbar { background:#fff; padding:14px 26px; display:flex; justify-content:space-between;
+    align-items:center; box-shadow:0 2px 6px rgba(0,0,0,.06); position:sticky; top:0; z-index:50; }
+  .topbar h1 { font-size:20px; color:#1e2a38; }
+  .topbar .user { font-size:14px; color:#7f8c8d; }
+  .hamburger { display:none; background:#1e2a38; color:#fff; border:none;
+    padding:8px 12px; border-radius:6px; font-size:18px; cursor:pointer; }
+  .content { padding:26px; }
+
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+    gap:16px; margin-bottom:26px; }
+  .card { background:#fff; border-radius:12px; padding:18px 20px;
+    box-shadow:0 2px 10px rgba(0,0,0,.05); border-left:5px solid #4fc3f7; position:relative; overflow:hidden; }
+  .card.green { border-left-color:#27ae60; }
+  .card.red { border-left-color:#e74c3c; }
+  .card.orange { border-left-color:#f39c12; }
+  .card.purple { border-left-color:#9b59b6; }
+  .card .label { font-size:13px; color:#7f8c8d; margin-bottom:8px; }
+  .card .value { font-size:23px; font-weight:700; color:#1e2a38; }
+  .card .icon-bg { position:absolute; right:14px; top:14px; font-size:26px; opacity:.15; }
+
+  .panel { background:#fff; border-radius:12px; padding:20px 22px;
+    box-shadow:0 2px 10px rgba(0,0,0,.05); margin-bottom:26px; }
+  .panel h3 { font-size:16px; margin-bottom:16px; color:#1e2a38;
+    border-bottom:2px solid #eef2f6; padding-bottom:10px; }
+  table { width:100%; border-collapse:collapse; font-size:13.5px; }
+  th, td { padding:11px 10px; text-align:left; border-bottom:1px solid #eef2f6; }
+  th { background:#f7f9fb; color:#5a6b7c; font-weight:600; font-size:12.5px;
+    text-transform:uppercase; letter-spacing:.4px; }
+  tr:hover td { background:#fafcfe; }
+  .badge { padding:3px 10px; border-radius:20px; font-size:12px; font-weight:600; }
+  .badge.active { background:#e8f8ef; color:#27ae60; }
+  .badge.inactive { background:#fdecea; color:#e74c3c; }
+  .badge.due { background:#fef5e7; color:#f39c12; }
+
+  .btn { background:#4fc3f7; color:#fff; border:none; padding:9px 16px;
+    border-radius:8px; cursor:pointer; font-size:14px; font-weight:600; }
+  .btn:hover { background:#29b6f6; }
+  .btn.danger { background:#e74c3c; } .btn.danger:hover { background:#c0392b; }
+  .btn.ghost { background:#eef2f6; color:#5a6b7c; }
+  .toolbar { display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:14px; gap:10px; flex-wrap:wrap; }
+  .toolbar input, .toolbar select { padding:9px 12px; border:1px solid #d5dde5;
+    border-radius:8px; font-size:14px; outline:none; }
+  .toolbar input:focus { border-color:#4fc3f7; }
+
+  .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.45); display:none;
+    align-items:center; justify-content:center; z-index:200; padding:20px; }
+  .modal-bg.show { display:flex; }
+  .modal { background:#fff; border-radius:14px; width:100%; max-width:480px;
+    max-height:90vh; overflow-y:auto; padding:24px; }
+  .modal h3 { margin-bottom:18px; color:#1e2a38; }
+  .form-group { margin-bottom:14px; }
+  .form-group label { display:block; font-size:13px; color:#5a6b7c; margin-bottom:6px; font-weight:600; }
+  .form-group input, .form-group select { width:100%; padding:10px 12px;
+    border:1px solid #d5dde5; border-radius:8px; font-size:14px; outline:none; }
+  .form-group input:focus, .form-group select:focus { border-color:#4fc3f7; }
+  .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:20px; }
+
+  .toast { position:fixed; bottom:24px; right:24px; background:#27ae60; color:#fff;
+    padding:14px 22px; border-radius:10px; font-size:14px; z-index:300;
+    box-shadow:0 6px 20px rgba(0,0,0,.2); opacity:0; transform:translateY(20px);
+    transition:all .35s; pointer-events:none; }
+  .toast.show { opacity:1; transform:translateY(0); }
+  .toast.err { background:#e74c3c; }
+
+  @media (max-width:900px) {
+    .sidebar { transform:translateX(-100%); }
+    .sidebar.open { transform:translateX(0); }
+    .main { margin-left:0; }
+    .hamburger { display:block; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <form class="login-box" onsubmit="doLogin(event)">
+    <h2>⚡ ISP Billing</h2>
+    <p class="sub">লগইন করুন (admin / admin123)</p>
+    <div class="login-err" id="loginErr">ভুল ইউজারনেম বা পাসওয়ার্ড</div>
+    <label>ইউজারনেম</label>
+    <input type="text" id="lUser" value="admin" required>
+    <label>পাসওয়ার্ড</label>
+    <input type="password" id="lPass" placeholder="admin123" required>
+    <button type="submit">লগইন</button>
+  </form>
+</div>
+
+<div id="app">
+  <aside class="sidebar" id="sidebar">
+    <h2><span>⚡</span> ISP BILLING</h2>
+    <a class="nav-link active" data-page="dashboard">🏠 Dashboard</a>
+    <a class="nav-link" data-page="customers">👥 Customer Management</a>
+    <a class="nav-link" data-page="packages">📦 Internet Packages</a>
+    <a class="nav-link" data-page="billing">🧾 Billing Management</a>
+    <a class="nav-link" data-page="payments">💵 Payment & Collection</a>
+    <a class="nav-link" data-page="reports">📊 Reports</a>
+    <a onclick="doLogout()" style="margin-top:20px;color:#ff7675;">🚪 Logout</a>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="hamburger" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+        <h1 id="pageTitle">Dashboard</h1>
+      </div>
+      <div class="user">👤 Admin (Super Admin)</div>
+    </div>
+
+    <div class="content">
+      <section id="page-dashboard">
+        <div class="cards">
+          <div class="card"><div class="label">মোট গ্রাহক</div><div class="value" id="sTotal">0</div><div class="icon-bg">👥</div></div>
+          <div class="card green"><div class="label">Active গ্রাহক</div><div class="value" id="sActive">0</div><div class="icon-bg">✅</div></div>
+          <div class="card red"><div class="label">Inactive গ্রাহক</div><div class="value" id="sInactive">0</div><div class="icon-bg">⛔</div></div>
+          <div class="card orange"><div class="label">মোট বকেয়া বিল</div><div class="value" id="sDue">৳0</div><div class="icon-bg">⚠️</div></div>
+          <div class="card green"><div class="label">আজকের কালেকশন</div><div class="value" id="sToday">৳0</div><div class="icon-bg">💵</div></div>
+          <div class="card"><div class="label">মাসিক কালেকশন</div><div class="value" id="sMonthly">৳0</div><div class="icon-bg">📅</div></div>
+          <div class="card"><div class="label">চলতি মাসের মোট বিল</div><div class="value" id="sBills">৳0</div><div class="icon-bg">🧾</div></div>
+        </div>
+        <div class="panel">
+          <h3>সাম্প্রতিক গ্রাহক</h3>
+          <table>
+            <thead><tr><th>ID</th><th>নাম</th><th>মোবাইল</th><th>প্যাকেজ</th><th>অবস্থা</th><th>বকেয়া</th></tr></thead>
+            <tbody id="recentBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="page-customers" style="display:none;">
+        <div class="panel">
+          <div class="toolbar">
+            <input type="text" id="searchCust" placeholder="🔍 নাম / ID / মোবাইল..." onkeyup="renderCustomers()">
+            <button class="btn" onclick="openCustomerModal()">+ নতুন গ্রাহক</button>
+          </div>
+          <table>
+            <thead><tr><th>ID</th><th>নাম</th><th>মোবাইল</th><th>প্যাকেজ</th><th>এরিয়া</th><th>অবস্থা</th><th>বকেয়া</th><th>Action</th></tr></thead>
+            <tbody id="custBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="page-packages" style="display:none;">
+        <div class="panel">
+          <div class="toolbar">
+            <h3 style="border:none;margin:0;padding:0;">প্যাকেজ তালিকা</h3>
+            <button class="btn" onclick="openPackageModal()">+ নতুন প্যাকেজ</button>
+          </div>
+          <table>
+            <thead><tr><th>প্যাকেজ</th><th>স্পিড</th><th>মূল্য</th><th>মেয়াদ</th><th>অবস্থা</th><th>Action</th></tr></thead>
+            <tbody id="pkgBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="page-billing" style="display:none;">
+        <div class="panel">
+          <div class="toolbar">
+            <h3 style="border:none;margin:0;padding:0;">বিল তালিকা</h3>
+            <button class="btn" onclick="generateBills()">⚙️ অটো বিল জেনারেট</button>
+          </div>
+          <table>
+            <thead><tr><th>বিল নং</th><th>গ্রাহক</th><th>মাস</th><th>মোট</th><th>জমা</th><th>বাকি</th><th>স্ট্যাটাস</th></tr></thead>
+            <tbody id="billBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="page-payments" style="display:none;">
+        <div class="panel">
+          <div class="toolbar">
+            <h3 style="border:none;margin:0;padding:0;">পেমেন্ট তালিকা</h3>
+            <button class="btn" onclick="openPaymentModal()">+ নতুন পেমেন্ট</button>
+          </div>
+          <table>
+            <thead><tr><th>রসিদ</th><th>গ্রাহক</th><th>পরিমাণ</th><th>মাধ্যম</th><th>কালেক্টর</th><th>তারিখ</th></tr></thead>
+            <tbody id="payBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="page-reports" style="display:none;">
+        <div class="panel">
+          <h3>সারসংক্ষেপ রিপোর্ট</h3>
+          <div class="cards" style="margin-top:16px;">
+            <div class="card"><div class="label">মোট কালেকশন</div><div class="value" id="rTotalColl">৳0</div></div>
+            <div class="card orange"><div class="label">মোট বকেয়া</div><div class="value" id="rDue">৳0</div></div>
+            <div class="card green"><div class="label">পেমেন্ট সংখ্যা</div><div class="value" id="rPayCount">0</div></div>
+            <div class="card purple"><div class="label">বিল সংখ্যা</div><div class="value" id="rBillCount">0</div></div>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>মাধ্যম অনুযায়ী কালেকশন</h3>
+          <table>
+            <thead><tr><th>মাধ্যম</th><th>মোট টাকা</th><th>সংখ্যা</th></tr></thead>
+            <tbody id="methodBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="customerModal">
+  <div class="modal">
+    <h3>নতুন গ্রাহক</h3>
+    <div class="form-group"><label>নাম *</label><input id="cName"></div>
+    <div class="form-group"><label>মোবাইল *</label><input id="cPhone"></div>
+    <div class="form-group"><label>এরিয়া</label><input id="cArea" placeholder="ঢাকা - মিরপুর"></div>
+    <div class="form-group"><label>প্যাকেজ</label><select id="cPkg"></select></div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="closeModal('customerModal')">বাতিল</button>
+      <button class="btn" onclick="saveCustomer()">সেভ</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="packageModal">
+  <div class="modal">
+    <h3>নতুন প্যাকেজ</h3>
+    <div class="form-group"><label>প্যাকেজ নাম *</label><input id="pName"></div>
+    <div class="form-group"><label>স্পিড (Mbps)</label><input type="number" id="pSpeed" value="10"></div>
+    <div class="form-group"><label>মাসিক মূল্য (৳)</label><input type="number" id="pPrice" value="500"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="closeModal('packageModal')">বাতিল</button>
+      <button class="btn" onclick="savePackage()">সেভ</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="paymentModal">
+  <div class="modal">
+    <h3>পেমেন্ট গ্রহণ</h3>
+    <div class="form-group"><label>গ্রাহক</label><select id="payCust"></select></div>
+    <div class="form-group"><label>পরিমাণ (৳)</label><input type="number" id="payAmount"></div>
+    <div class="form-group"><label>মাধ্যম</label>
+      <select id="payMethod"><option>Cash</option><option>bKash</option><option>Nagad</option>
+      <option>Rocket</option><option>Bank</option><option>Online</option></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="closeModal('paymentModal')">বাতিল</button>
+      <button class="btn" onclick="savePayment()">জমা করুন</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY = 'isp_billing_data_v1';
+let DB = load();
+
+function load() {
+  const raw = localStorage.getItem(KEY);
+  if (raw) return JSON.parse(raw);
+  return {
+    packages: [
+      {id:1, name:'Home Basic', speed:10, price:600, status:'Active'},
+      {id:2, name:'Home Plus', speed:20, price:900, status:'Active'},
+      {id:3, name:'Premium', speed:40, price:1400, status:'Active'},
+      {id:4, name:'Business Pro', speed:100, price:3000, status:'Inactive'},
+    ],
+    customers: [
+      {id:1001, code:'ISP-1001', name:'রফিকুল ইসলাম', phone:'01711000001', area:'ঢাকা - মিরপুর', pkgId:2, status:'Active', due:500},
+      {id:1002, code:'ISP-1002', name:'সাবরিনা আক্তার', phone:'01822000002', area:'ঢাকা - উত্তরা', pkgId:1, status:'Active', due:0},
+      {id:1003, code:'ISP-1003', name:'মাহবুব হোসেন', phone:'01933000003', area:'গাজীপুর - টঙ্গী', pkgId:3, status:'Inactive', due:1400},
+      {id:1004, code:'ISP-1004', name:'নাসরিন সুলতানা', phone:'01644000004', area:'নারায়ণগঞ্জ - সদর', pkgId:2, status:'Active', due:900},
+    ],
+    bills: [
+      {id:1, billNo:'B-202406-1001', custId:1001, month:'2024-06', total:900, paid:400, status:'Partial'},
+      {id:2, billNo:'B-202406-1002', custId:1002, month:'2024-06', total:600, paid:600, status:'Paid'},
+    ],
+    payments: [
+      {id:1, receipt:'RCP-20240610-001', custId:1001, amount:400, method:'bKash', collector:'Admin', date:'2024-06-10'},
+      {id:2, receipt:'RCP-20240611-002', custId:1002, amount:600, method:'Cash', collector:'Admin', date:'2024-06-11'},
+    ],
+    nextCustId: 1005, nextPkgId: 5, nextBillId: 3, nextPayId: 3
+  };
+}
+function save() { localStorage.setItem(KEY, JSON.stringify(DB)); }
+
+function doLogin(e) {
+  e.preventDefault();
+  const u = document.getElementById('lUser').value.trim();
+  const p = document.getElementById('lPass').value;
+  if (u === 'admin' && (p === 'admin123' || p === 'admin')) {
+    sessionStorage.setItem('isp_logged_in', '1');
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    renderAll();
+  } else {
+    document.getElementById('loginErr').style.display = 'block';
+  }
+}
+function doLogout() {
+  sessionStorage.removeItem('isp_logged_in');
+  location.reload();
+}
+if (sessionStorage.getItem('isp_logged_in') === '1') {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+}
+
+const titles = {
+  dashboard:'Dashboard', customers:'Customer Management', packages:'Internet Packages',
+  billing:'Billing Management', payments:'Payment & Collection', reports:'Reports'
+};
+document.querySelectorAll('.nav-link').forEach(a => {
+  a.addEventListener('click', () => {
+    document.querySelectorAll('.nav-link').forEach(x => x.classList.remove('active'));
+    a.classList.add('active');
+    const page = a.dataset.page;
+    document.querySelectorAll('section[id^="page-"]').forEach(s => s.style.display='none');
+    document.getElementById('page-' + page).style.display = 'block';
+    document.getElementById('pageTitle').textContent = titles[page];
+    document.getElementById('sidebar').classList.remove('open');
+    renderAll();
+  });
+});
+
+function money(n) { return '৳' + Number(n).toLocaleString('en-US'); }
+function pkgName(id) { const p = DB.packages.find(x => x.id === id); return p ? p.name : '—'; }
+function pkgPrice(id) { const p = DB.packages.find(x => x.id === id); return p ? p.price : 0; }
+
+let toastTimer;
+function toast(msg, isErr=false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (isErr ? ' err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = 'toast', 2800);
+}
+function openModal(id) { document.getElementById(id).classList.add('show'); }
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+function renderAll() {
+  renderDashboard(); renderCustomers(); renderPackages();
+  renderBilling(); renderPayments(); renderReports();
+}
+
+function renderDashboard() {
+  const total = DB.customers.length;
+  const active = DB.customers.filter(c => c.status === 'Active').length;
+  const due = DB.customers.reduce((s,c) => s + c.due, 0);
+  const today = new Date().toISOString().slice(0,10);
+  const todayColl = DB.payments.filter(p => p.date === today).reduce((s,p) => s + p.amount, 0);
+  const thisMonth = new Date().toISOString().slice(0,7);
+  const monthColl = DB.payments.filter(p => p.date.slice(0,7) === thisMonth).reduce((s,p) => s + p.amount, 0);
+  const monthBills = DB.bills.filter(b => b.month === thisMonth).reduce((s,b) => s + b.total, 0);
+
+  document.getElementById('sTotal').textContent = total;
+  document.getElementById('sActive').textContent = active;
+  document.getElementById('sInactive').textContent = total - active;
+  document.getElementById('sDue').textContent = money(due);
+  document.getElementById('sToday').textContent = money(todayColl);
+  document.getElementById('sMonthly').textContent = money(monthColl);
+  document.getElementById('sBills').textContent = money(monthBills);
+
+  document.getElementById('recentBody').innerHTML = DB.customers.slice(-5).reverse().map(c => `
+    <tr><td>${c.code}</td><td>${c.name}</td><td>${c.phone}</td><td>${pkgName(c.pkgId)}</td>
+    <td><span class="badge ${c.status==='Active'?'active':'inactive'}">${c.status}</span></td>
+    <td>${money(c.due)}</td></tr>
+  `).join('') || '<tr><td colspan="6" style="text-align:center;color:#999;">কোনো গ্রাহক নেই</td></tr>';
+}
+
+function renderCustomers() {
+  const q = (document.getElementById('searchCust')?.value || '').toLowerCase();
+  const list = DB.customers.filter(c =>
+    c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q) || c.phone.includes(q)
+  );
+  document.getElementById('custBody').innerHTML = list.map(c => `
+    <tr><td>${c.code}</td><td>${c.name}</td><td>${c.phone}</td><td>${pkgName(c.pkgId)}</td>
+    <td>${c.area || '—'}</td>
+    <td><span class="badge ${c.status==='Active'?'active':'inactive'}">${c.status}</span></td>
+    <td>${money(c.due)}</td>
+    <td><button class="btn danger" style="padding:5px 10px;font-size:12px;" onclick="delCustomer(${c.id})">Delete</button></td></tr>
+  `).join('') || '<tr><td colspan="8" style="text-align:center;color:#999;">কোনো গ্রাহক নেই</td></tr>';
+}
+
+function renderPackages() {
+  document.getElementById('pkgBody').innerHTML = DB.packages.map(p => `
+    <tr><td>${p.name}</td><td>${p.speed} Mbps</td><td>${money(p.price)}</td><td>30 দিন</td>
+    <td><span class="badge ${p.status==='Active'?'active':'inactive'}">${p.status}</span></td>
+    <td><button class="btn danger" style="padding:5px 10px;font-size:12px;" onclick="delPackage(${p.id})">Delete</button></td></tr>
+  `).join('') || '<tr><td colspan="6" style="text-align:center;color:#999;">কোনো প্যাকেজ নেই</td></tr>';
+}
+
+function renderBilling() {
+  document.getElementById('billBody').innerHTML = DB.bills.map(b => {
+    const cust = DB.customers.find(c => c.id === b.custId);
+    const rem = b.total - b.paid;
+    const cls = b.status==='Paid'?'active':(b.status==='Partial'?'due':'inactive');
+    return `<tr><td>${b.billNo}</td><td>${cust ? cust.name : '—'}</td><td>${b.month}</td>
+      <td>${money(b.total)}</td><td>${money(b.paid)}</td><td>${money(rem)}</td>
+      <td><span class="badge ${cls}">${b.status}</span></td></tr>`;
+  }).join('') || '<tr><td colspan="7" style="text-align:center;color:#999;">কোনো বিল নেই</td></tr>';
+}
+
+function renderPayments() {
+  document.getElementById('payBody').innerHTML = DB.payments.map(p => {
+    const cust = DB.customers.find(c => c.id === p.custId);
+    return `<tr><td>${p.receipt}</td><td>${cust ? cust.name : '—'}</td><td>${money(p.amount)}</td>
+      <td>${p.method}</td><td>${p.collector}</td><td>${p.date}</td></tr>`;
+  }).join('') || '<tr><td colspan="6" style="text-align:center;color:#999;">কোনো পেমেন্ট নেই</td></tr>';
+}
+
+function renderReports() {
+  const totalColl = DB.payments.reduce((s,p) => s + p.amount, 0);
+  const due = DB.customers.reduce((s,c) => s + c.due, 0);
+  document.getElementById('rTotalColl').textContent = money(totalColl);
+  document.getElementById('rDue').textContent = money(due);
+  document.getElementById('rPayCount').textContent = DB.payments.length;
+  document.getElementById('rBillCount').textContent = DB.bills.length;
+
+  const methods = {};
+  DB.payments.forEach(p => {
+    if (!methods[p.method]) methods[p.method] = {sum:0, count:0};
+    methods[p.method].sum += p.amount; methods[p.method].count++;
+  });
+  document.getElementById('methodBody').innerHTML = Object.entries(methods).map(([m,v]) =>
+    `<tr><td>${m}</td><td>${money(v.sum)}</td><td>${v.count}</td></tr>`
+  ).join('') || '<tr><td colspan="3" style="text-align:center;color:#999;">কোনো পেমেন্ট নেই</td></tr>';
+}
+
+function openCustomerModal() {
+  document.getElementById('cPkg').innerHTML = DB.packages.map(p =>
+    `<option value="${p.id}">${p.name} (${p.speed}Mbps - ৳${p.price})</option>`).join('');
+  openModal('customerModal');
+}
+function saveCustomer() {
+  const name = document.getElementById('cName').value.trim();
+  const phone = document.getElementById('cPhone').value.trim();
+  const area = document.getElementById('cArea').value.trim();
+  const pkgId = parseInt(document.getElementById('cPkg').value);
+  if (!name || !phone) { toast('নাম ও মোবাইল দিন', true); return; }
+
+  const id = DB.nextCustId++;
+  DB.customers.push({id, code:'ISP-' + id, name, phone, area, pkgId,
+    status:'Active', due: pkgPrice(pkgId)});
+  save();
+  closeModal('customerModal');
+  document.getElementById('cName').value = '';
+  document.getElementById('cPhone').value = '';
+  document.getElementById('cArea').value = '';
+  renderAll();
+  toast('✅ গ্রাহক যোগ হয়েছে: ISP-' + id);
+}
+function delCustomer(id) {
+  if (!confirm('এই গ্রাহক মুছবেন?')) return;
+  DB.customers = DB.customers.filter(c => c.id !== id);
+  DB.bills = DB.bills.filter(b => b.custId !== id);
+  DB.payments = DB.payments.filter(p => p.custId !== id);
+  save(); renderAll(); toast('গ্রাহক মুছে ফেলা হয়েছে');
+}
+
+function openPackageModal() {
+  document.getElementById('pName').value = '';
+  document.getElementById('pSpeed').value = 10;
+  document.getElementById('pPrice').value = 500;
+  openModal('packageModal');
+}
+function savePackage() {
+  const name = document.getElementById('pName').value.trim();
+  const speed = parseInt(document.getElementById('pSpeed').value);
+  const price = parseFloat(document.getElementById('pPrice').value);
+  if (!name || !speed || !price) { toast('সব তথ্য দিন', true); return; }
+  DB.packages.push({id: DB.nextPkgId++, name, speed, price, status:'Active'});
+  save(); closeModal('packageModal'); renderAll(); toast('✅ প্যাকেজ যোগ হয়েছে');
+}
+function delPackage(id) {
+  if (!confirm('এই প্যাকেজ মুছবেন?')) return;
+  DB.packages = DB.packages.filter(p => p.id !== id);
+  save(); renderAll(); toast('প্যাকেজ মুছে ফেলা হয়েছে');
+}
+
+function generateBills() {
+  const month = new Date().toISOString().slice(0,7);
+  let count = 0;
+  DB.customers.forEach(c => {
+    if (c.status !== 'Active') return;
+    if (DB.bills.find(b => b.custId === c.id && b.month === month)) return;
+    const price = pkgPrice(c.pkgId);
+    if (!price) return;
+    DB.bills.push({id: DB.nextBillId++, billNo:'B-' + month.replace('-','') + '-' + c.id,
+      custId: c.id, month, total: price, paid: 0, status: 'Unpaid'});
+    c.due += price;
+    count++;
+  });
+  save(); renderAll();
+  toast('✅ ' + count + ' টি বিল তৈরি হয়েছে');
+}
+
+function openPaymentModal() {
+  document.getElementById('payCust').innerHTML = DB.customers.map(c =>
+    `<option value="${c.id}">${c.code} - ${c.name} (বকেয়া ৳${c.due})</option>`).join('');
+  document.getElementById('payAmount').value = '';
+  openModal('paymentModal');
+}
+function savePayment() {
+  const custId = parseInt(document.getElementById('payCust').value);
+  const amount = parseFloat(document.getElementById('payAmount').value);
+  const method = document.getElementById('payMethod').value;
+  if (!custId || !amount || amount <= 0) { toast('সঠিক পরিমাণ দিন', true); return; }
+
+  const cust = DB.customers.find(c => c.id === custId);
+  if (!cust) return;
+
+  const receipt = 'RCP-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + String(DB.nextPayId).padStart(3,'0');
+  DB.payments.push({id: DB.nextPayId++, receipt, custId, amount, method,
+    collector:'Admin', date: new Date().toISOString().slice(0,10)});
+
+  cust.due = Math.max(0, cust.due - amount);
+
+  let remaining = amount;
+  DB.bills.filter(b => b.custId === custId && b.status !== 'Paid')
+    .sort((a,b) => a.id - b.id)
+    .forEach(b => {
+      if (remaining <= 0) return;
+      const need = b.total - b.paid;
+      const apply = Math.min(need, remaining);
+      b.paid += apply;
+      b.status = b.paid >= b.total ? 'Paid' : 'Partial';
+      remaining -= apply;
+    });
+
+  save(); closeModal('paymentModal'); renderAll();
+  toast('✅ জমা হয়েছে — ' + receipt);
+}
+
+if (sessionStorage.getItem('isp_logged_in') === '1') {
+  renderAll();
+}
+</script>
+</body>
+</html>
